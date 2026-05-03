@@ -15,7 +15,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-data "aws_eks_cluster" "main"      { name = var.eks_cluster_name }
+data "aws_eks_cluster" "main" { name = var.eks_cluster_name }
 data "aws_eks_cluster_auth" "main" { name = var.eks_cluster_name }
 
 provider "kubernetes" {
@@ -34,12 +34,10 @@ provider "helm" {
 
 # ── Grafana Provider (Optimized) ───────────────────────────────────────────
 provider "grafana" {
-  # Use the same port logic as the module (3001 for prod, 3000 for others)
   url  = "http://${var.grafana_ec2_host}:${var.environment == "prod" ? 3001 : 3000}"
   auth = "${var.grafana_admin_user}:${var.grafana_admin_password}"
-  
-  # This prevents the provider from failing during the initial 'plan' 
-  # before the container is actually running.
+
+  # Prevents provider failure before the EC2 Docker container is live
   retry_status_codes = [401, 403, 500, 502, 503, 504]
   retries            = 3
 }
@@ -73,10 +71,8 @@ module "grafana" {
   grafana_ec2_host       = var.grafana_ec2_host
   grafana_admin_user     = var.grafana_admin_user
   grafana_admin_password = var.grafana_admin_password
-  
-  # Pass the prometheus endpoint from the module output
-  prometheus_endpoint    = module.prometheus.prometheus_endpoint
 
-  # Ensure everything else is ready before we touch Grafana
+  prometheus_endpoint = module.prometheus.prometheus_endpoint
+
   depends_on = [module.prometheus, module.k8s_workloads]
 }
