@@ -1,0 +1,126 @@
+# .github/workflows/terraform-apply.yml
+# Applies Terraform automatically after a merge:
+#   merge → main  → deploys PROD environment
+#   merge → dev   → deploys DEV environment
+#
+# Required GitHub Secrets:
+#   AWS_ACCESS_KEY_ID          — IAM user/role key
+#   AWS_SECRET_ACCESS_KEY      — IAM user/role secret
+#   GRAFANA_ADMIN_PASSWORD     — Grafana admin password
+#   EC2_SSH_PRIVATE_KEY        — Contents of your .pem file (used to write temp file)
+
+name: Terraform Apply
+
+on:
+  push:
+    branches: [main, dev]
+    paths:
+      - "terraform/**"
+      - ".github/workflows/terraform-*.yml"
+
+  # Allow manual trigger with environment selection
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy manually"
+        required: true
+        type: choice
+        options: [dev, prod]
+
+permissions:
+  contents: read
+  id-token: write   # for OIDC auth (optional but recommended)
+
+env:
+  TF_VERSION: "1.8.2"
+  AWS_REGION: "us-east-1"
+  WORKING_DIR: "./terraform"
+
+jobs:
+  apply:
+    name: Terraform Apply
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ─────────────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── 2. Configure AWS credentials ────────────────────────────────────
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id:     ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region:            ${{ env.AWS_REGION }}
+
+      # ── 3. Setup Terraform ──────────────────────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # ── 4. Write SSH key to temp file ───────────────────────────────────
+      - name: Write EC2 SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ec2-key.pem
+          chmod 600 ~/.ssh/ec2-key.pem
+
+      # ── 5. Determine environment ─────────────────────────────────────────
+      - name: Set environment
+        id: env
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ github.event.inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENV="prod"
+          else
+            ENV="dev"
+          fi
+          echo "env=$ENV" >> $GITHUB_OUTPUT
+          echo "tfvars=environments/${ENV}.tfvars" >> $GITHUB_OUTPUT
+          echo "Deploying to: $ENV"
+
+      # ── 6. Terraform Init ───────────────────────────────────────────────
+      - name: Terraform Init
+        working-directory: ${{ env.WORKING_DIR }}
+        run: terraform init -input=false
+
+      # ── 7. Terraform Plan (pre-apply check) ─────────────────────────────
+      - name: Terraform Plan
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          TF_VAR_ec2_private_key_path:   ~/.ssh/ec2-key.pem
+        run: |
+          terraform plan \
+            -var-file="${{ steps.env.outputs.tfvars }}" \
+            -no-color \
+            -out=tfplan
+
+      # ── 8. Terraform Apply ───────────────────────────────────────────────
+      - name: Terraform Apply
+        working-directory: ${{ env.WORKING_DIR }}
+        env:
+          TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+          TF_VAR_ec2_private_key_path:   ~/.ssh/ec2-key.pem
+        run: |
+          terraform apply \
+            -auto-approve \
+            -no-color \
+            tfplan
+
+      # ── 8. Print Results ────────────────────────────────────────────────
+      - name: Output Connection Info
+        working-directory: ${{ env.WORKING_DIR }}
+        run: |
+          echo "════════════════════════════════════════"
+          echo "✅  Deploy complete — ${{ steps.env.outputs.env }} environment"
+          echo "════════════════════════════════════════"
+          terraform output grafana_url || echo "No URL output found"
+
+      # ── 10. Cleanup SSH key ──────────────────────────────────────────────
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/ec2-key.pem
