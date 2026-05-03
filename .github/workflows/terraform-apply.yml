@@ -56,7 +56,7 @@ jobs:
       - name: Write EC2 SSH key
         run: |
           mkdir -p /home/runner/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /home/runner/.ssh/ec2-key.pem
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /home/runner/.ssh/linux.pem
           chmod 600 /home/runner/.ssh/ec2-key.pem
 
       - name: Set environment
@@ -82,7 +82,7 @@ jobs:
         env:
           TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
           # Use the full absolute path so Terraform doesn't get lost
-          TF_VAR_ec2_private_key_path:   /home/runner/.ssh/ec2-key.pem
+          TF_VAR_ec2_private_key_path:   "/home/runner/.ssh/linux.pem"
         run: |
           terraform plan \
             -var-file="${{ steps.env.outputs.tfvars }}" \
