@@ -26,8 +26,8 @@ variable "grafana_ec2_host" {
 }
 
 variable "grafana_admin_user" {
-  type        = string
-  default     = "admin"
+  type    = string
+  default = "admin"
 }
 
 variable "grafana_admin_password" {

@@ -4,12 +4,12 @@
 terraform {
   required_providers {
     kubernetes = {
-      source  = "hashicorp/kubernetes"
+      source = "hashicorp/kubernetes"
     }
   }
 }
 locals {
-  ns = var.environment   # namespace name matches environment: "dev" or "prod"
+  ns = var.environment # namespace name matches environment: "dev" or "prod"
 }
 
 # ── Namespace ──────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ resource "kubernetes_config_map" "app_config" {
   }
 
   data = {
-    APP_ENV  = var.environment
+    APP_ENV   = var.environment
     LOG_LEVEL = var.environment == "prod" ? "warn" : "debug"
   }
 }

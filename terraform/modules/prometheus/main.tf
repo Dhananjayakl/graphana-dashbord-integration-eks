@@ -11,10 +11,10 @@
 terraform {
   required_providers {
     helm = {
-      source  = "hashicorp/helm"
+      source = "hashicorp/helm"
     }
     kubernetes = {
-      source  = "hashicorp/kubernetes"
+      source = "hashicorp/kubernetes"
     }
   }
 }
@@ -33,7 +33,7 @@ resource "helm_release" "prometheus_stack" {
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
   namespace        = kubernetes_namespace.monitoring.metadata[0].name
-  version          = "58.1.3"   # pin a version; bump intentionally
+  version          = "58.1.3" # pin a version; bump intentionally
   create_namespace = false
   wait             = true
   timeout          = 600

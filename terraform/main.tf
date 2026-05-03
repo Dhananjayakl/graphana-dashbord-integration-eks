@@ -77,19 +77,19 @@ data "aws_instance" "grafana_host" {
 module "prometheus" {
   source = "./modules/prometheus"
 
-  environment       = var.environment
-  eks_cluster_name  = var.eks_cluster_name
+  environment      = var.environment
+  eks_cluster_name = var.eks_cluster_name
 }
 
 # ── Module: Dev & Prod K8s Workloads ───────────────────────────────────────
 module "k8s_workloads" {
   source = "./modules/k8s-workloads"
 
-  environment     = var.environment
-  app_image       = var.app_image
-  app_replicas    = var.app_replicas
-  cpu_request     = var.cpu_request
-  memory_request  = var.memory_request
+  environment    = var.environment
+  app_image      = var.app_image
+  app_replicas   = var.app_replicas
+  cpu_request    = var.cpu_request
+  memory_request = var.memory_request
 
   depends_on = [module.prometheus]
 }
@@ -98,14 +98,14 @@ module "k8s_workloads" {
 module "grafana" {
   source = "./modules/grafana"
 
-  environment           = var.environment
-  ec2_instance_id       = var.ec2_instance_id
-  ec2_private_key_path  = var.ec2_private_key_path
-  ec2_ssh_user          = var.ec2_ssh_user
-  grafana_ec2_host      = var.grafana_ec2_host
-  grafana_admin_user    = var.grafana_admin_user
+  environment            = var.environment
+  ec2_instance_id        = var.ec2_instance_id
+  ec2_private_key_path   = var.ec2_private_key_path
+  ec2_ssh_user           = var.ec2_ssh_user
+  grafana_ec2_host       = var.grafana_ec2_host
+  grafana_admin_user     = var.grafana_admin_user
   grafana_admin_password = var.grafana_admin_password
-  prometheus_endpoint   = module.prometheus.prometheus_endpoint
+  prometheus_endpoint    = module.prometheus.prometheus_endpoint
 
   depends_on = [module.prometheus, module.k8s_workloads]
 }
