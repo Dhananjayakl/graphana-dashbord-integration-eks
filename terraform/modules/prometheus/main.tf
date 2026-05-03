@@ -11,10 +11,7 @@ terraform {
 
 resource "kubernetes_namespace" "monitoring" {
   metadata {
-    name = "monitoring"
-    labels = {
-      "app.kubernetes.io/managed-by" = "terraform"
-    }
+    name = "monitoring-${var.environment}"
   }
 }
 
