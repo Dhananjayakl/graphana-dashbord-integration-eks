@@ -71,11 +71,13 @@ jobs:
           fi
           echo "env=$ENV" >> $GITHUB_OUTPUT
           echo "tfvars=environments/${ENV}.tfvars" >> $GITHUB_OUTPUT
-
+      
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
-        run: terraform init -input=false
-
+        run: |
+          terraform init -input=false \
+            -backend-config="key=grafana-eks/${{ steps.env.outputs.env }}/terraform.tfstate"
+            
       # ── 7. Terraform Plan (Generates the binary plan file) ──────────────
       - name: Terraform Plan
         working-directory: ${{ env.WORKING_DIR }}
