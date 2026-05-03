@@ -11,7 +11,7 @@ locals {
   grafana_port           = var.environment == "prod" ? 3001 : 3000
   datasource_name        = "Prometheus-${title(var.environment)}"
   # Construct the local URL for the health check and the provider
-  grafana_url            = "http://${var.grafana_ec2_host}:${local.grafana_port}"
+  grafana_url = "http://${var.grafana_ec2_host}:${local.grafana_port}"
 }
 
 # ── Start Grafana container on EC2 ─────────────────────────────────────────
@@ -61,9 +61,9 @@ resource "grafana_data_source" "prometheus" {
   url  = var.prometheus_endpoint
 
   json_data_encoded = jsonencode({
-    httpMethod        = "POST"
-    prometheusType    = "Prometheus"
-    prometheusVersion = "2.50.0"
+    httpMethod            = "POST"
+    prometheusType        = "Prometheus"
+    prometheusVersion     = "2.50.0"
     customQueryParameters = "namespace=${var.environment}"
   })
 
@@ -83,9 +83,9 @@ resource "grafana_dashboard" "k8s_cluster" {
     environment     = var.environment
     namespace       = var.environment
   })
-  folder      = grafana_folder.env.id
-  overwrite   = true
-  depends_on  = [grafana_data_source.prometheus]
+  folder     = grafana_folder.env.id
+  overwrite  = true
+  depends_on = [grafana_data_source.prometheus]
 }
 
 resource "grafana_dashboard" "k8s_namespace" {
@@ -94,7 +94,7 @@ resource "grafana_dashboard" "k8s_namespace" {
     environment     = var.environment
     namespace       = var.environment
   })
-  folder      = grafana_folder.env.id
-  overwrite   = true
-  depends_on  = [grafana_data_source.prometheus]
+  folder     = grafana_folder.env.id
+  overwrite  = true
+  depends_on = [grafana_data_source.prometheus]
 }
