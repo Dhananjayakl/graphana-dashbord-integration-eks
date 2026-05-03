@@ -3,6 +3,14 @@
 # Step 1: Start Grafana Docker container on the existing EC2 via SSH
 # Step 2: Configure Prometheus datasource via Grafana Terraform provider
 # Step 3: Provision K8s cluster dashboard filtered to this environment's namespace
+terraform {
+  required_providers {
+    grafana = {
+      source  = "grafana/grafana"
+      version = "~> 1.0"
+    }
+  }
+}
 
 locals {
   grafana_container_name = "grafana-${var.environment}"

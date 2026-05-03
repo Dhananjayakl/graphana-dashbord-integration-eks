@@ -8,6 +8,19 @@
 # Grafana is DISABLED (we run our own on EC2).
 # Prometheus is exposed via an internal AWS NLB so Grafana on EC2 can reach it.
 
+terraform {
+  required_providers {
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.0"
+    }
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+}
+
 resource "kubernetes_namespace" "monitoring" {
   metadata {
     name = "monitoring"

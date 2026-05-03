@@ -1,7 +1,14 @@
 # ── modules/k8s-workloads/main.tf ─────────────────────────────────────────
 # Creates a namespace + sample workload for the given environment.
 # Prometheus will auto-discover pods via the `prometheus.io/scrape` annotation.
-
+terraform {
+  required_providers {
+    kubernetes = {
+      source  = "hashicorp/kubernetes"
+      version = "~> 2.0"
+    }
+  }
+}
 locals {
   ns = var.environment   # namespace name matches environment: "dev" or "prod"
 }
