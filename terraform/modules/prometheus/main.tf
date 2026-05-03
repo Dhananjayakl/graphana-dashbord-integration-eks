@@ -23,7 +23,7 @@ resource "helm_release" "prometheus_stack" {
   version          = "58.1.3"
   create_namespace = false
   wait             = true
-  timeout          = 600
+  timeout          = 1800
 
   # ── Disable the bundled Grafana ────────────────────────────────────────
   set {
