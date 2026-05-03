@@ -10,7 +10,7 @@ terraform {
   }
 }
 
-# ── AWS & EKS Configuration ────────────────────────────────────────────────
+# ── AWS & EKS Configurationn ────────────────────────────────────────────────
 provider "aws" {
   region = var.aws_region
 }
