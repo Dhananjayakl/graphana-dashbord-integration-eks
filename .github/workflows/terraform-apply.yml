@@ -57,7 +57,7 @@ jobs:
         run: |
           mkdir -p /home/runner/.ssh
           echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /home/runner/.ssh/linux.pem
-          chmod 600 /home/runner/.ssh/ec2-key.pem
+          chmod 600 /home/runner/.ssh/linux.pem
 
       - name: Set environment
         id: env
@@ -94,7 +94,7 @@ jobs:
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          TF_VAR_ec2_private_key_path:   /home/runner/.ssh/ec2-key.pem
+          TF_VAR_ec2_private_key_path:   /home/runner/.ssh/linux.pem
         run: |
           terraform apply \
             -auto-approve \
@@ -111,4 +111,4 @@ jobs:
 
       - name: Cleanup SSH key
         if: always()
-        run: rm -f /home/runner/.ssh/ec2-key.pem
+        run: rm -f /home/runner/.ssh/linux.pem
