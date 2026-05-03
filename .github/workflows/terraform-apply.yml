@@ -9,7 +9,7 @@
 #   GRAFANA_ADMIN_PASSWORD     — Grafana admin password
 #   EC2_SSH_PRIVATE_KEY        — Contents of your .pem file (used to write temp file)
 
-name: Terraform Apply
+name: "Terraform Apply"
 
 on:
   push:
@@ -18,7 +18,6 @@ on:
       - "terraform/**"
       - ".github/workflows/terraform-*.yml"
 
-  # Allow manual trigger with environment selection
   workflow_dispatch:
     inputs:
       environment:
@@ -27,10 +26,6 @@ on:
         type: choice
         options: [dev, prod]
 
-permissions:
-  contents: read
-  id-token: write   # for OIDC auth (optional but recommended)
-
 env:
   TF_VERSION: "1.8.2"
   AWS_REGION: "us-east-1"
@@ -38,15 +33,13 @@ env:
 
 jobs:
   apply:
-    name: Terraform Apply
+    name: "Terraform Apply"
     runs-on: ubuntu-latest
 
     steps:
-      # ── 1. Checkout ─────────────────────────────────────────────────────
       - name: Checkout
         uses: actions/checkout@v4
 
-      # ── 2. Configure AWS credentials ────────────────────────────────────
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -54,20 +47,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region:            ${{ env.AWS_REGION }}
 
-      # ── 3. Setup Terraform ──────────────────────────────────────────────
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TF_VERSION }}
 
-      # ── 4. Write SSH key to temp file ───────────────────────────────────
+      # ── 4. Write SSH key (Using absolute path for reliability) ──────────
       - name: Write EC2 SSH key
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > ~/.ssh/ec2-key.pem
-          chmod 600 ~/.ssh/ec2-key.pem
+          mkdir -p /home/runner/.ssh
+          echo "${{ secrets.EC2_SSH_PRIVATE_KEY }}" > /home/runner/.ssh/ec2-key.pem
+          chmod 600 /home/runner/.ssh/ec2-key.pem
 
-      # ── 5. Determine environment ─────────────────────────────────────────
       - name: Set environment
         id: env
         run: |
@@ -80,38 +71,36 @@ jobs:
           fi
           echo "env=$ENV" >> $GITHUB_OUTPUT
           echo "tfvars=environments/${ENV}.tfvars" >> $GITHUB_OUTPUT
-          echo "Deploying to: $ENV"
 
-      # ── 6. Terraform Init ───────────────────────────────────────────────
       - name: Terraform Init
         working-directory: ${{ env.WORKING_DIR }}
         run: terraform init -input=false
 
-      # ── 7. Terraform Plan (pre-apply check) ─────────────────────────────
+      # ── 7. Terraform Plan (Generates the binary plan file) ──────────────
       - name: Terraform Plan
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          TF_VAR_ec2_private_key_path:   ~/.ssh/ec2-key.pem
+          # Use the full absolute path so Terraform doesn't get lost
+          TF_VAR_ec2_private_key_path:   /home/runner/.ssh/ec2-key.pem
         run: |
           terraform plan \
             -var-file="${{ steps.env.outputs.tfvars }}" \
             -no-color \
             -out=tfplan
 
-      # ── 8. Terraform Apply ───────────────────────────────────────────────
+      # ── 8. Terraform Apply (Uses the plan file generated above) ─────────
       - name: Terraform Apply
         working-directory: ${{ env.WORKING_DIR }}
         env:
           TF_VAR_grafana_admin_password: ${{ secrets.GRAFANA_ADMIN_PASSWORD }}
-          TF_VAR_ec2_private_key_path:   ~/.ssh/ec2-key.pem
+          TF_VAR_ec2_private_key_path:   /home/runner/.ssh/ec2-key.pem
         run: |
           terraform apply \
             -auto-approve \
             -no-color \
             tfplan
 
-      # ── 8. Print Results ────────────────────────────────────────────────
       - name: Output Connection Info
         working-directory: ${{ env.WORKING_DIR }}
         run: |
@@ -120,7 +109,6 @@ jobs:
           echo "════════════════════════════════════════"
           terraform output grafana_url || echo "No URL output found"
 
-      # ── 10. Cleanup SSH key ──────────────────────────────────────────────
       - name: Cleanup SSH key
         if: always()
-        run: rm -f ~/.ssh/ec2-key.pem
+        run: rm -f /home/runner/.ssh/ec2-key.pem
