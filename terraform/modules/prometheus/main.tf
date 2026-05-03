@@ -11,22 +11,19 @@ terraform {
 
 resource "kubernetes_namespace" "monitoring" {
   metadata {
-    name = "monitoring"
-    labels = {
-      "app.kubernetes.io/managed-by" = "terraform"
-    }
+    name = "monitoring-${var.environment}"
   }
 }
 
 resource "helm_release" "prometheus_stack" {
-  name             = "kube-prometheus-stack"
+  name             = "kube-prometheus-stack-${var.environment}"
   repository       = "https://prometheus-community.github.io/helm-charts"
   chart            = "kube-prometheus-stack"
   namespace        = kubernetes_namespace.monitoring.metadata[0].name
   version          = "58.1.3"
   create_namespace = false
   wait             = true
-  timeout          = 600
+  timeout          = 1800
 
   # ── Disable the bundled Grafana ────────────────────────────────────────
   set {
@@ -82,7 +79,7 @@ resource "helm_release" "prometheus_stack" {
 # ── Data source to capture the NLB Hostname ───────────────────────────────
 data "kubernetes_service" "prometheus" {
   metadata {
-    name      = "kube-prometheus-stack-prometheus"
+    name      = "kube-prometheus-stack-${var.environment}-prometheus"
     namespace = kubernetes_namespace.monitoring.metadata[0].name
   }
   depends_on = [helm_release.prometheus_stack]
