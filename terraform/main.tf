@@ -2,58 +2,28 @@ terraform {
   required_version = ">= 1.6.0"
 
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.12"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.25"
-    }
-    grafana = {
-      source  = "grafana/grafana"
-      version = "~> 2.9"
-    }
-    null = {
-      source  = "hashicorp/null"
-      version = "~> 3.2"
-    }
+    aws        = { source = "hashicorp/aws", version = "~> 5.0" }
+    helm       = { source = "hashicorp/helm", version = "~> 2.12" }
+    kubernetes = { source = "hashicorp/kubernetes", version = "~> 2.25" }
+    grafana    = { source = "grafana/grafana", version = "~> 2.9" }
+    null       = { source = "hashicorp/null", version = "~> 3.2" }
   }
 }
 
-# ── AWS Provider ────────────────────────────────────────────────────────────
+# ── AWS & EKS Configuration ────────────────────────────────────────────────
 provider "aws" {
   region = var.aws_region
-  default_tags {
-    tags = {
-      Project     = "grafana-eks-monitoring"
-      Environment = var.environment
-      ManagedBy   = "terraform"
-    }
-  }
 }
 
-# ── Fetch existing EKS cluster details ─────────────────────────────────────
-data "aws_eks_cluster" "main" {
-  name = var.eks_cluster_name
-}
+data "aws_eks_cluster" "main"      { name = var.eks_cluster_name }
+data "aws_eks_cluster_auth" "main" { name = var.eks_cluster_name }
 
-data "aws_eks_cluster_auth" "main" {
-  name = var.eks_cluster_name
-}
-
-# ── Kubernetes Provider (points at existing EKS) ───────────────────────────
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.main.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.main.certificate_authority[0].data)
   token                  = data.aws_eks_cluster_auth.main.token
 }
 
-# ── Helm Provider (points at existing EKS) ─────────────────────────────────
 provider "helm" {
   kubernetes {
     host                   = data.aws_eks_cluster.main.endpoint
@@ -62,29 +32,28 @@ provider "helm" {
   }
 }
 
-# ── Grafana Provider (points at Grafana container on EC2) ──────────────────
+# ── Grafana Provider (Optimized) ───────────────────────────────────────────
 provider "grafana" {
-  url  = "http://${var.grafana_ec2_host}:3000"
+  # Use the same port logic as the module (3001 for prod, 3000 for others)
+  url  = "http://${var.grafana_ec2_host}:${var.environment == "prod" ? 3001 : 3000}"
   auth = "${var.grafana_admin_user}:${var.grafana_admin_password}"
+  
+  # This prevents the provider from failing during the initial 'plan' 
+  # before the container is actually running.
+  retry_status_codes = [401, 403, 500, 502, 503, 504]
+  retries            = 3
 }
 
-# ── Fetch existing EC2 instance ────────────────────────────────────────────
-data "aws_instance" "grafana_host" {
-  instance_id = var.ec2_instance_id
-}
+# ── Modules ────────────────────────────────────────────────────────────────
 
-# ── Module: Prometheus on EKS ──────────────────────────────────────────────
 module "prometheus" {
-  source = "./modules/prometheus"
-
+  source           = "./modules/prometheus"
   environment      = var.environment
   eks_cluster_name = var.eks_cluster_name
 }
 
-# ── Module: Dev & Prod K8s Workloads ───────────────────────────────────────
 module "k8s_workloads" {
-  source = "./modules/k8s-workloads"
-
+  source         = "./modules/k8s-workloads"
   environment    = var.environment
   app_image      = var.app_image
   app_replicas   = var.app_replicas
@@ -94,7 +63,6 @@ module "k8s_workloads" {
   depends_on = [module.prometheus]
 }
 
-# ── Module: Grafana on EC2 ─────────────────────────────────────────────────
 module "grafana" {
   source = "./modules/grafana"
 
@@ -105,7 +73,10 @@ module "grafana" {
   grafana_ec2_host       = var.grafana_ec2_host
   grafana_admin_user     = var.grafana_admin_user
   grafana_admin_password = var.grafana_admin_password
+  
+  # Pass the prometheus endpoint from the module output
   prometheus_endpoint    = module.prometheus.prometheus_endpoint
 
+  # Ensure everything else is ready before we touch Grafana
   depends_on = [module.prometheus, module.k8s_workloads]
 }
