@@ -37,6 +37,11 @@ resource "helm_release" "prometheus_stack" {
     value = "LoadBalancer"
   }
 
+  set {
+    name  = "nodeExporter.enabled"
+    value = var.enable_node_exporter
+  }
+
   # FIX: Use extra double quotes for the values to force them as strings 
   # and ensure the dots are escaped correctly for Helm.
   set {

@@ -16,3 +16,6 @@ app_image      = "nginx:latest"
 app_replicas   = 2
 cpu_request    = "100m"
 memory_request = "128Mi"
+
+# In your helm_release values or tfvars
+node_exporter_enabled = false

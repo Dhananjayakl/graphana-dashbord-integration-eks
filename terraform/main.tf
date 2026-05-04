@@ -45,9 +45,10 @@ provider "grafana" {
 # ── Modules ────────────────────────────────────────────────────────────────
 
 module "prometheus" {
-  source           = "./modules/prometheus"
-  environment      = var.environment
-  eks_cluster_name = var.eks_cluster_name
+  source               = "./modules/prometheus"
+  environment          = var.environment
+  eks_cluster_name     = var.eks_cluster_name
+  enable_node_exporter = var.nodeExporter.enabled
 }
 
 module "k8s_workloads" {

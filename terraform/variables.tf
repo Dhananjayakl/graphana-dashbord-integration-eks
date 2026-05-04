@@ -79,3 +79,9 @@ variable "memory_request" {
   type        = string
   default     = "128Mi"
 }
+
+#--------------------
+variable "node_exporter_enabled" {
+  type    = bool
+  default = true
+}
