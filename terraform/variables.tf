@@ -81,7 +81,12 @@ variable "memory_request" {
 }
 
 #--------------------
-variable "node_exporter_enabled" {
-  type    = bool
-  default = true
+variable "nodeExporter" {
+  description = "Configuration for Node Exporter"
+  type = object({
+    enabled = bool
+  })
+  default = {
+    enabled = true
+  }
 }
