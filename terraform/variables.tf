@@ -90,3 +90,8 @@ variable "nodeExporter" {
     enabled = true
   }
 }
+
+variable "node_exporter_enabled" {
+  type    = bool
+  default = true
+}
